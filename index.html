@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>我有唸書</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #fff8e1;
+      padding: 20px;
+      margin: 0;
+      text-align: center;
+      overflow-x: hidden;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+      transition: color 0.5s ease;
+    }
+    #subtitle {
+      font-size: 1.2rem;
+      color: #555;
+      margin-bottom: 20px;
+      min-height: 1.5em; /* 預留空間，避免跳動 */
+    }
+    .question {
+      margin: 0 auto 20px auto;
+      max-width: 90%;
+      background: #fff3cd;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      opacity: 1;
+      transition: opacity 0.6s ease;
+    }
+    .question.fade-out {
+      opacity: 0;
+    }
+    button {
+      margin: 8px 4px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      background-color: #f4a261;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 80%;
+      max-width: 300px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #card {
+      display: none;
+      margin-top: 30px;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 1s ease, transform 0.5s ease;
+      position: relative;
+      z-index: 1;
+    }
+    #card.show {
+      display: block;
+      opacity: 1;
+      transform: scale(1);
+    }
+    video {
+      width: 100%;
+      max-width: 360px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    /* 氣球動畫樣式 */
+    #balloons {
+      position: fixed;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 9999;
+    }
+    .balloon {
+      position: absolute;
+      bottom: 0;
+      width: 40px;
+      height: 55px;
+      background: red;
+      border-radius: 50% 50% 50% 50%;
+      opacity: 0.8;
+      animation-name: floatUp;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+    .balloon::after {
+      content: "";
+      position: absolute;
+      bottom: -15px;
+      left: 50%;
+      width: 2px;
+      height: 15px;
+      background: #555;
+      transform: translateX(-50%);
+    }
+    .balloon:nth-child(1) { background: #e63946; left: 10%; animation-duration: 6s; animation-delay: 0s; }
+    .balloon:nth-child(2) { background: #f1faee; left: 25%; animation-duration: 7s; animation-delay: 1.5s; }
+    .balloon:nth-child(3) { background: #a8dadc; left: 40%; animation-duration: 5.5s; animation-delay: 0.8s; }
+    .balloon:nth-child(4) { background: #457b9d; left: 60%; animation-duration: 6.5s; animation-delay: 1.2s; }
+    .balloon:nth-child(5) { background: #ffb703; left: 80%; animation-duration: 7.5s; animation-delay: 0.5s; }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0.8;
+      }
+      50% {
+        transform: translateY(-150px) translateX(10px);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-300px) translateX(0);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1 id="title">🎉 你有多了解我 🎉</h1>
+  <p id="subtitle"></p>
+
+  <div class="question" id="quiz">
+    <p id="question-text">題目載入中...</p>
+    <div id="options"></div>
+  </div>
+
+  <div id="card"></div>
+
+  <script>
+    const questions = [
+      { question: "張丹齡幾歲?", options: ["16", "17", "18"], answer: "17" },
+      { question: "張丹齡睡覺時抱的娃娃叫什麼名字？", options: ["Labubu", "Jellycat", "玲娜貝兒"], answer: "玲娜貝兒" },
+      { question: "張丹齡高二下的體育成績是？", options: ["78", "88", "98"], answer: "78" },
+      { question: "張丹齡放棄考資工系的理由是？", options: ["分數太高", "AI太強", "沒有興趣"], answer: "AI太強" },
+      { question: "今天是什麼日子？", options: ["2025/06/21", "114/6/21", "阿拔52歲生日"], answer: "阿拔52歲生日" }
+    ];
+
+    let current = 0;
+    let correct = 0;
+
+    function loadQuestion() {
+      const q = questions[current];
+      document.getElementById("question-text").textContent = q.question;
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
+
+      // 每換題清空祝福文字
+      document.getElementById("subtitle").textContent = "";
+
+      q.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => {
+          disableAllButtons();
+          if (opt === q.answer) {
+            correct++;
+            setTimeout(() => {
+              nextQuestion();
+            }, 300);
+          } else {
+            // 答錯淡出後跳轉
+            const quizDiv = document.getElementById("quiz");
+            quizDiv.classList.add("fade-out");
+
+            setTimeout(() => {
+              if (current === questions.length -1 && correct === questions.length -1) {
+                window.location.href = "normal.html";
+              } else {
+                window.location.href = "bad.html";
+              }
+            }, 600);
+          }
+        };
+        optionsDiv.appendChild(btn);
+      });
+    }
+
+    function disableAllButtons() {
+      const buttons = document.querySelectorAll("#options button");
+      buttons.forEach(btn => {
+        btn.disabled = true;
+      });
+    }
+
+    function nextQuestion() {
+      current++;
+      if (current < questions.length) {
+        loadQuestion();
+      } else {
+        // 通關顯示影片區，改標題與祝福文字，並加氣球動畫
+        document.getElementById("quiz").style.display = "none";
+        
+        const title = document.getElementById("title");
+        const subtitle = document.getElementById("subtitle");
+        
+        title.textContent = "🎈 True Ending 🎈";
+        subtitle.textContent = "祝阿拔52歲生日快樂！";
+
+        const card = document.getElementById("card");
+        card.innerHTML = `
+          <div id="balloons">
+            <div class="balloon"></div>
+            <div class="balloon"></div>
+            <div class="balloon"></div>
+            <div class="balloon"></div>
+            <div class="balloon"></div>
+          </div>
+          <video autoplay loop muted playsinline>
+            <source src="birthday.mp4" type="video/mp4">
+            您的瀏覽器不支援影片播放。
+          </video>
+        `;
+        card.style.display = "block";
+        setTimeout(() => {
+          card.classList.add("show");
+        }, 100);
+      }
+    }
+
+    loadQuestion();
+  </script>
+
+</body>
+</html>
